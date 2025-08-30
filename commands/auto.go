@@ -19,7 +19,7 @@ func dotenvToDuration(key string) time.Duration {
 	}
 	duration, err := time.ParseDuration(str)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("error parsing duration: ", err)
 	}
 	return duration
 }
