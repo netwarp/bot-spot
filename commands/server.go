@@ -90,6 +90,10 @@ func Server() {
 				percentageChange = "N/A"
 			}
 
+			// gain usd
+			gainUSD := (sellPriceFloat - buyPriceFloat) * quantityFloat
+			gainUSDStr := fmt.Sprintf("%.2f", gainUSD)
+
 			cycles = append(cycles, map[string]interface{}{
 				"_id":       doc.Get("_id"),
 				"idInt":     doc.Get("idInt"),
@@ -99,6 +103,7 @@ func Server() {
 				"buyPrice":  buyPriceFloat,
 				"sellPrice": sellPriceFloat,
 				"change":    percentageChange,
+				"gainUSD":   gainUSDStr,
 				"buyId":     doc.Get("buyId"),
 				"sellId":    doc.Get("sellId"),
 			})
