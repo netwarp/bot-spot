@@ -10,7 +10,7 @@ import (
 	"slices"
 )
 
-const version = "v3.0.7"
+const version = "v3.0.8"
 
 func menu() {
 	fmt.Println("")
