@@ -28,7 +28,7 @@ func FormatSmallFloat(quantity float64) string {
 	return fmt.Sprintf("%.6f", quantity)
 }
 
-func New() {
+func New() error {
 	MainMiddleware()
 
 	percent := os.Getenv("PERCENT")

@@ -1,282 +1,119 @@
 package database
 
 import (
+	"database/sql"
 	"errors"
-	"github.com/ostafen/clover"
 	"log"
+	_ "modernc.org/sqlite"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
-const CollectionName = "cycles"
+func GetDatabasePath() (string, error) {
+	_, fullPath, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", errors.New("error getting database path")
+	}
 
-func InitDatabase() (*clover.DB, error) {
-	databasePath := GetDatabasePath()
-	db, _ := clover.Open(databasePath)
-	collectionAlreadyExists, _ := db.HasCollection(CollectionName)
-	if !collectionAlreadyExists {
-		err := db.CreateCollection(CollectionName)
+	normalizedPath := filepath.ToSlash(fullPath)
+	rootFolderName := "bot-spot-v3"
+	index := strings.LastIndex(normalizedPath, rootFolderName)
+
+	if index == -1 {
+		log.Printf("Folder %s not found in %s", rootFolderName, normalizedPath)
+		return "", errors.New("error getting database path")
+	}
+
+	endIndex := index + len(rootFolderName)
+	projectRootPath := normalizedPath[:endIndex]
+
+	dbDir := filepath.Join(projectRootPath, "db")
+	if _, err := os.Stat(dbDir); errors.Is(err, os.ErrNotExist) {
+		if mkErr := os.MkdirAll(dbDir, os.ModePerm); mkErr != nil {
+			return "", mkErr
+		}
+	}
+
+	dbFile := filepath.Join(dbDir, "bot.db")
+
+	return dbFile, nil
+
+}
+
+func InitDatabase() (err error) {
+	dbPath, err := GetDatabasePath()
+	if err != nil {
+		return err
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+
+	// Ping or create
+	if err := db.Ping(); err != nil {
+		return err
+	}
+
+	// Utility function
+	execAndIgnoreDuplicateColumn := func(stmt string) error {
+		_, err := db.Exec(stmt)
 		if err != nil {
-			log.Fatal(err)
+			if strings.Contains(err.Error(), "duplicate column name") {
+				return nil // Ignore the error, the column is already there.
+			}
 		}
+		return err
 	}
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatalf("Error db.Close: %s", err)
-		}
-	}(db)
 
-	return db, nil
-}
-
-func GetDatabasePath() string {
-	dirname, err := os.UserHomeDir()
+	// Create table cycles
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS cycles (id INTEGER PRIMARY KEY)")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	rootDir := filepath.Join(dirname, "cryptomancien")
-	databasePath := filepath.Join(rootDir, "bot-v3")
-
-	if _, err := os.Stat(rootDir); errors.Is(err, os.ErrNotExist) {
-		if err := os.Mkdir(rootDir, os.ModePerm); err != nil {
-			log.Fatal(err)
-		}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN exchange TEXT"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN status TEXT"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN quantity REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN buyPrice REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN buyId TEXT"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN sellPrice REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN sellId TEXT"); err != nil {
+		return err
 	}
 
-	if _, err := os.Stat(databasePath); errors.Is(err, os.ErrNotExist) {
-		if err := os.Mkdir(databasePath, os.ModePerm); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	return databasePath
-}
-
-func GetDB() *clover.DB {
-	databasePath := GetDatabasePath()
-	db, err := clover.Open(databasePath)
+	// Create table cfg_items
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS cfg_items (key TEXT PRIMARY KEY, value TEXT)")
 	if err != nil {
-		log.Fatal("Error opening database:", err)
+		return err
 	}
 
-	return db
+	return nil
 }
 
-type Status string
-
-type Cycle struct {
-	IdInt     int32
-	Exchange  string
-	Status    string // buy sell completed
-	Quantity  float64
-	BuyPrice  float64
-	BuyId     string
-	SellPrice float64
-	SellId    string
-}
-
-func List() []*clover.Document {
-	db := GetDB()
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(db)
-
-	docs, err := db.Query(CollectionName).Sort(clover.SortOption{Field: "idInt", Direction: -1}).FindAll()
+func GetDB() (sqlDB *sql.DB, err error) {
+	path, err := GetDatabasePath()
 	if err != nil {
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		log.Fatal(err)
+		return nil, err
 	}
-
-	return docs
-}
-
-func PrepareIdInt() int32 {
-	db := GetDB()
-
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(db)
-
-	count, err := db.Query(CollectionName).Count()
+	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	if count == 0 {
-		return 1
-	}
-
-	lastDoc, _ := db.Query(CollectionName).Sort(clover.SortOption{
-		Field:     "idInt",
-		Direction: -1,
-	}).Limit(1).FindFirst()
-
-	// Handle the case where idInt might be stored as float64
-	var lastId int64
-	idValue := lastDoc.Get("idInt")
-
-	switch v := idValue.(type) {
-	case int64:
-		lastId = v
-	case float64:
-		lastId = int64(v)
-	default:
-		log.Fatalf("Unexpected type for idInt: %T", idValue)
-	}
-
-	nextId := lastId + 1
-
-	return int32(nextId)
-}
-
-func NewCycle(cycle *Cycle) string {
-	idInt := PrepareIdInt()
-	exchange := cycle.Exchange
-	status := cycle.Status
-	quantity := cycle.Quantity
-	buyPrice := cycle.BuyPrice
-	buyId := cycle.BuyId
-	sellPrice := cycle.SellPrice
-	sellId := cycle.SellId
-
-	doc := clover.NewDocument()
-	doc.Set("idInt", idInt)
-	doc.Set("exchange", exchange)
-	doc.Set("status", status)
-	doc.Set("quantity", quantity)
-	doc.Set("buyPrice", buyPrice)
-	doc.Set("buyId", buyId)
-	doc.Set("sellPrice", sellPrice)
-	doc.Set("sellId", sellId)
-
-	db := GetDB()
-	docId, err := db.InsertOne(CollectionName, doc)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.SetFlags(log.LstdFlags | log.Lshortfile)
-			log.Fatal(err)
-		}
-	}(db)
-
-	return docId
-}
-
-func GetById(id string) *clover.Document {
-	db := GetDB()
-
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(db)
-
-	document, err := db.Query(CollectionName).FindById(id)
-	if err != nil {
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		log.Fatal(err)
-	}
-	return document
-}
-
-func GetByIdInt(id int) *clover.Document {
-	db := GetDB()
-
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.SetFlags(log.LstdFlags | log.Lshortfile)
-			log.Fatal(err)
-		}
-	}(db)
-
-	document, err := db.Query(CollectionName).Where(clover.Field("idInt").Eq(id)).FindFirst()
-	if err != nil {
-		log.Println(err)
-	}
-
-	return document
-}
-
-func DeleteById(id string) {
-	db := GetDB()
-
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(db)
-
-	err := db.Query(CollectionName).DeleteById(id)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func DeleteByIdInt(idInt int32) {
-	db := GetDB()
-
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(db)
-
-	err := db.
-		Query(CollectionName).
-		Where(clover.Field("idInt").
-			Eq(idInt)).
-		Delete()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func ListPerPage(page, perPage int) []*clover.Document {
-	db := GetDB()
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	skip := (page - 1) * perPage
-	docs, _ := db.Query(CollectionName).Sort(clover.SortOption{
-		Field:     "idInt",
-		Direction: -1,
-	}).
-		Skip(skip).
-		Limit(perPage).
-		FindAll()
-
-	return docs
-}
-
-func FindCycleByIdAndUpdate(id, field string, value interface{}) {
-	db := GetDB()
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	err := db.Query(CollectionName).UpdateById(id, map[string]interface{}{field: value})
-	if err != nil {
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		log.Fatal(err)
-	}
+	return db, err
 }

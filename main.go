@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/ostafen/clover"
+	"log"
 	"main/commands"
 	"main/database"
 	"os"
@@ -31,7 +31,7 @@ func initialize() error {
 	commands.CreateConfigFileIfNotExists()
 	commands.LoadDotEnv()
 
-	// Create exports files if not exists
+	// Create an exports folder if not exists
 	path := "exports"
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(path, os.ModePerm)
@@ -41,17 +41,10 @@ func initialize() error {
 		return nil
 	}
 
-	// Init db
-	db, err := database.InitDatabase()
+	_, err := database.InitDatabase()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(db)
 
 	return nil
 }
