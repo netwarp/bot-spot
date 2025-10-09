@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 type Status string
@@ -13,13 +14,22 @@ const (
 )
 
 type BuyStruct struct {
-	Price float64
-	ID    string
+	Offset int
+	Price  float64
+	ID     string
 }
 
 type SellStruct struct {
-	Price float64
-	ID    string
+	Offset int
+	Price  float64
+	ID     string
+}
+
+type MetaData struct {
+	FreeBalanceUSD float64
+	USDDedicated   float64
+	Percent        int
+	BTCPrice       float64
 }
 
 type Cycle struct {
@@ -29,20 +39,28 @@ type Cycle struct {
 	Quantity float64
 	Buy      BuyStruct
 	Sell     SellStruct
+	MetaData MetaData
 }
 
-func CycleNew(cycle *Cycle) (sql.Result, error) {
+func CycleNew(cycle *Cycle) (int64, error) {
 	db, err := GetDB()
 	if err != nil {
-		return nil, err
+		return 0, fmt.Errorf("error getting database: %v", err)
 	}
 
-	result, err := db.Exec("INSERT INTO cycles (exchange, status, quantity, buyPrice, buyId, sellPrice, sellId) VALUES (?, ?, ?, ?, ?, ?, ?)", cycle.Exchange, cycle.Status, cycle.Quantity, cycle.Buy.Price, cycle.Buy.ID, cycle.Sell.Price, cycle.Sell.ID)
+	id, err := db.Exec("INSERT INTO cycles (exchange, status, quantity, buyPrice, buyId, sellPrice, sellId) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id", cycle.Exchange, cycle.Status, cycle.Quantity, cycle.Buy.Price, cycle.Buy.ID, cycle.Sell.Price, cycle.Sell.ID)
 	if err != nil {
-		return nil, err
+		return 0, fmt.Errorf("error inserting cycle: %v", err)
 	}
 
-	return result, nil
+	insertId, err := id.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	defer db.Close()
+
+	return insertId, nil
 }
 
 func CycleList() ([]Cycle, error) {

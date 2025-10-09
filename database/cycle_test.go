@@ -20,11 +20,11 @@ func TestCycleNew(t *testing.T) {
 		},
 	}
 
-	newCycle, err := CycleNew(cycle)
+	err := CycleNew(cycle)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(newCycle)
+
 }
 
 func TestCycleList(t *testing.T) {

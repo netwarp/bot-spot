@@ -86,7 +86,7 @@ func (c *Client) CheckConnection() {
 	fmt.Println("")
 }
 
-func (c *Client) GetBalanceUSD() float64 {
+func (c *Client) GetBalanceUSD() (float64, error) {
 	color.Blue("Checking USDC balance...")
 
 	timestamp := time.Now().UnixMilli()
@@ -114,10 +114,10 @@ func (c *Client) GetBalanceUSD() float64 {
 		}
 	})
 
-	return freeFloat
+	return freeFloat, nil
 }
 
-func (c *Client) GetLastPriceBTC() float64 {
+func (c *Client) GetLastPriceBTC() (float64, error) {
 	queryString := "symbol=BTCUSDC"
 	body, err := c.sendRequest("GET", "/api/v3/ticker/price", queryString)
 	if err != nil {
@@ -134,7 +134,7 @@ func (c *Client) GetLastPriceBTC() float64 {
 		log.Fatalf("Error converting price: %v", err)
 	}
 
-	return price
+	return price, nil
 }
 
 func (c *Client) CreateOrder(side string, price, quantity string) ([]byte, error) {

@@ -6,10 +6,17 @@ import (
 	"log"
 	_ "modernc.org/sqlite"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 )
+
+func RootDir() string {
+	_, b, _, _ := runtime.Caller(0)
+	d := path.Join(path.Dir(b))
+	return filepath.Dir(d)
+}
 
 func GetDatabasePath() (string, error) {
 	_, fullPath, _, ok := runtime.Caller(0)

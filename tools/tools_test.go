@@ -22,12 +22,3 @@ func TestTelegram(t *testing.T) {
 	message += fmt.Sprintf("💰 Gain: 4000$ \n\n")
 	Telegram(message)
 }
-
-func TestReadExportAndSaveInDatabase(t *testing.T) {
-	err := godotenv.Load(ConfigFilename)
-	if err != nil {
-		log.Fatal("Error loading config file")
-	}
-
-	SaveExportToDatabase()
-}

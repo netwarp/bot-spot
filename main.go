@@ -7,10 +7,9 @@ import (
 	"main/commands"
 	"main/database"
 	"os"
-	"slices"
 )
 
-const version = "v3.0.8"
+const version = "v3.1.0"
 
 func menu() {
 	fmt.Println("")
@@ -41,7 +40,7 @@ func initialize() error {
 		return nil
 	}
 
-	_, err := database.InitDatabase()
+	err := database.InitDatabase()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,32 +55,53 @@ func main() {
 	}
 
 	args := os.Args[1:]
-
-	actions := map[string]func(){
-		"--new":     commands.New,
-		"-n":        commands.New,
-		"--update":  commands.Update,
-		"-u":        commands.Update,
-		"--server":  commands.Server,
-		"-s":        commands.Server,
-		"--cancel":  commands.Cancel,
-		"-c":        commands.Cancel,
-		"--auto":    commands.Auto,
-		"-a":        commands.Auto,
-		"--clear":   commands.Clear,
-		"-cl":       commands.Clear,
-		"--export":  func() { commands.Export(true) },
-		"-e":        func() { commands.Export(true) },
-		"--restore": commands.Restore,
-		"-r":        commands.Restore,
+	if len(args) == 0 {
+		menu()
+		return
 	}
 
-	for key, action := range actions {
-		if slices.Contains(args, key) {
-			action()
-			return
+	cmd := args[0]
+	switch cmd {
+	case "--new", "-n":
+		err := commands.New()
+		if err != nil {
+			panic(err)
 		}
+		break
+	case "--update", "-u":
+		err := commands.Update()
+		if err != nil {
+			panic(err)
+		}
+		break
 	}
 
-	menu()
+	//actions := map[string]func(){
+	//	"--new": func() {
+	//		commands.New()
+	//		return
+	//	},
+	//	"-n":       commands.New,
+	//	"--update": commands.Update,
+	//	"-u":       commands.Update,
+	//	"--server": commands.Server,
+	//	"-s":       commands.Server,
+	//	"--cancel": commands.Cancel,
+	//	"-c":       commands.Cancel,
+	//	"--auto":   commands.Auto,
+	//	"-a":       commands.Auto,
+	//	"--clear":  commands.Clear,
+	//	"-cl":      commands.Clear,
+	//	"--export": func() { commands.Export(true) },
+	//	"-e":       func() { commands.Export(true) },
+	//}
+	//
+	//for key, action := range actions {
+	//	if slices.Contains(args, key) {
+	//		action()
+	//		return
+	//	}
+	//}
+
+	//menu()
 }

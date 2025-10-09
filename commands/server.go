@@ -51,75 +51,49 @@ func Server() {
 		fmt.Println(page)
 
 		//docs := database.ListPerPage(page, perPage)
-		docs := database.List()
+		cycles, err := database.CycleList()
+		if err != nil {
+			http.Error(w, "Error getting cycles", http.StatusInternalServerError)
+			return
+		}
+
 		cyclesCount := 0
 		cyclesCompleted := 0
 		totalBuy := 0.0
 		totalSell := 0.0
 
-		var cycles []map[string]interface{}
-		for _, doc := range docs {
-			quantity := doc.Get("quantity")
-			buyPrice := doc.Get("buyPrice")
-			sellPrice := doc.Get("sellPrice")
-			status := doc.Get("status")
+		for _, _ = range cycles {
+			//quantity := cycle.Quantity
+			//buyPrice := cycle.Buy.Price
+			//sellPrice := cycle.Sell.Price
+			//status := cycle.Status
 
-			var quantityFloat, buyPriceFloat, sellPriceFloat float64
-			var quantityStr string
-
-			if q, ok := quantity.(float64); ok {
-				quantityFloat = q
-				quantityStr = fmt.Sprintf("%.8f", q)
-			} else {
-				quantityStr = fmt.Sprintf("%v", quantity)
-			}
-
-			if bp, ok := buyPrice.(float64); ok {
-				buyPriceFloat = bp
-			}
-
-			if sp, ok := sellPrice.(float64); ok {
-				sellPriceFloat = sp
-			}
-
-			var percentageChange string
-			if buyPriceFloat > 0 {
-				change := ((quantityFloat * sellPriceFloat) - (quantityFloat * buyPriceFloat)) / (quantityFloat * buyPriceFloat) * 100
-				percentageChange = fmt.Sprintf("%.2f%%", change)
-			} else {
-				percentageChange = "N/A"
-			}
+			//var quantityFloat, buyPriceFloat, sellPriceFloat float64
+			//var quantityStr string
+			//
+			//var percentageChange string
+			//if buyPriceFloat > 0 {
+			//	change := ((quantityFloat * sellPriceFloat) - (quantityFloat * buyPriceFloat)) / (quantityFloat * buyPriceFloat) * 100
+			//	percentageChange = fmt.Sprintf("%.2f%%", change)
+			//} else {
+			//	percentageChange = "N/A"
+			//}
 
 			// gain usd
-			gainUSD := (sellPriceFloat - buyPriceFloat) * quantityFloat
-			gainUSDStr := fmt.Sprintf("%.2f", gainUSD)
-
-			cycles = append(cycles, map[string]interface{}{
-				"_id":       doc.Get("_id"),
-				"idInt":     doc.Get("idInt"),
-				"exchange":  doc.Get("exchange"),
-				"status":    doc.Get("status"),
-				"quantity":  quantityStr,
-				"buyPrice":  buyPriceFloat,
-				"sellPrice": sellPriceFloat,
-				"change":    percentageChange,
-				"gainUSD":   gainUSDStr,
-				"buyId":     doc.Get("buyId"),
-				"sellId":    doc.Get("sellId"),
-			})
+			//gainUSD := (sellPriceFloat - buyPriceFloat) * quantityFloat
 
 			// Update stats
 			cyclesCount++
 
-			if status == "completed" {
-				cyclesCompleted++
-
-				b := (buyPrice).(float64) * (quantity).(float64)
-				totalBuy += b
-
-				s := (sellPrice).(float64) * (quantity).(float64)
-				totalSell += s
-			}
+			//if status == "completed" {
+			//	cyclesCompleted++
+			//
+			//	b := (buyPrice).(float64) * (quantity).(float64)
+			//	totalBuy += b
+			//
+			//	s := (sellPrice).(float64) * (quantity).(float64)
+			//	totalSell += s
+			//}
 		}
 
 		gainAbs := totalSell - totalBuy

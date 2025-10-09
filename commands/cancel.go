@@ -1,23 +1,15 @@
 package commands
 
 import (
-	// "fmt"
-	// "github.com/fatih/color"
-	// "log"
-	// "main/database"
-	// "os"
-	// "strconv"
-	// "strings"
 	"fmt"
 	"github.com/fatih/color"
 	"log"
 	"main/database"
 	"os"
 	"strconv"
-	"strings"
 )
 
-func Cancel() {
+func Cancel() error {
 	if len(os.Args) < 3 {
 		color.Red("Id required")
 		color.Cyan("go run . -c 34")
@@ -26,54 +18,51 @@ func Cancel() {
 
 	lastArg := os.Args[2]
 
-	idInt, err := strconv.Atoi(lastArg)
+	id, err := strconv.Atoi(lastArg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	color.Yellow("Cancelling %d", idInt)
+	color.Yellow("Cancelling %d", id)
 
-	document := database.GetByIdInt(idInt)
-	if document == nil {
-		color.Red("No document found")
-		return
+	cycle, err := database.CycleGetById(id)
+	if err != nil {
+		return err
 	}
 
-	status := document.Get("status").(string)
-	exchange := document.Get("exchange").(string)
-	exchange = strings.ToUpper(exchange)
-
+	status := cycle.Status
 	if status == "completed" {
-		color.Red("Can't cancel completed cycle, only 'buy' or 'sell' is supported")
-		os.Exit(0)
-	}
-
-	var orderIdToCancel string
-	if status == "buy" {
-		orderIdToCancel = (document.Get("buyId")).(string)
-	} else if status == "sell" {
-		orderIdToCancel = (document.Get("sellId")).(string)
-
-		if orderIdToCancel == "" {
-			color.Cyan("No order found for cancelling...deleting")
-			database.DeleteByIdInt(int32(idInt))
-			color.Green("Cycle %d successfully canceled", idInt)
-			os.Exit(0)
-		}
-	} else {
-		color.Red("Unknown status")
-		os.Exit(0)
+		errMsg := "can't cancel completed cycle, only 'buy' or 'sell' is supported"
+		color.Red(errMsg)
+		//os.Exit(0)
+		return fmt.Errorf(errMsg)
 	}
 
 	client := GetClientByExchange()
 
-	res, err := client.CancelOrder(orderIdToCancel)
+	buyId := cycle.Buy.ID
+	sellId := cycle.Sell.ID
+
+	res, err := client.CancelOrder(buyId)
 	if err != nil {
-		fmt.Println(string(res))
-		return
+		log.Println(string(res))
+		return err
+	}
+	fmt.Println(string(res))
+
+	res, err = client.CancelOrder(sellId)
+	if err != nil {
+		log.Println(string(res))
+		return err
+	}
+	fmt.Println(string(res))
+
+	err = database.CycleDeleteById(id)
+	if err != nil {
+		return err
 	}
 
-	database.DeleteByIdInt(int32(idInt))
+	color.Green("Cycle %d successfully canceled", id)
 
-	color.Green("Cycle %d successfully canceled", idInt)
+	return nil
 }

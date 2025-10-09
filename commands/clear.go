@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/fatih/color"
 	"main/database"
 	"os"
@@ -15,13 +16,13 @@ func makeRange(min, max int) []int {
 	return a
 }
 
-func Clear() {
+func Clear() error {
 	args := os.Args[2:]
 
 	if len(args) != 2 {
 		color.Red("Start and End required")
 		color.Cyan("Example: go run . -cl 12 35")
-		return
+		return nil
 	}
 
 	startStr := args[0]
@@ -32,17 +33,27 @@ func Clear() {
 
 	if start == end {
 		color.Yellow("Delete one cycle %d", start)
-		database.DeleteByIdInt(int32(start))
+
+		err := database.CycleDeleteById(start)
+		if err != nil {
+			return fmt.Errorf("error deleting cycle %d: %v", start, err)
+		}
+
 		color.Green("Cycle %d successfully deleted", start)
-		return
+		return nil
 	}
 
 	r := makeRange(start, end)
 
 	for i := range r {
 		color.White("Deleting %d", r[i])
-		database.DeleteByIdInt(int32(r[i]))
+		//database.DeleteByIdInt(int32(r[i]))
+		err := database.CycleDeleteById(r[i])
+		if err != nil {
+			return fmt.Errorf("error deleting cycle %d: %v", r[i], err)
+		}
 	}
 
 	color.Green("Range successfully deleted")
+	return nil
 }

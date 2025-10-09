@@ -7,7 +7,6 @@ import (
 	"log"
 	"main/database"
 	"main/tools"
-	"math"
 	"os"
 	"strconv"
 )
@@ -24,110 +23,208 @@ func CalcAmountBTC(availableUSD, priceBTC float64) float64 {
 	return availableUSD / priceBTC
 }
 
-func FormatSmallFloat(quantity float64) string {
-	return fmt.Sprintf("%.6f", quantity)
-}
-
 func New() error {
 	MainMiddleware()
 
-	percent := os.Getenv("PERCENT")
-
-	buyOffset, _ := strconv.ParseFloat(os.Getenv("BUY_OFFSET"), 64)
-	buyOffset = math.Abs(buyOffset)
-
-	sellOffset, _ := strconv.ParseFloat(os.Getenv("SELL_OFFSET"), 64)
-	//sellOffset = math.Abs(sellOffset)
-
-	client := GetClientByExchange()
-
-	client.CheckConnection()
-
-	freeBalance := client.GetBalanceUSD()
-	color.Cyan("Free USD Balance: %.2f", freeBalance)
-	if freeBalance < 10 {
-		tools.Telegram("At least 10$ needed")
-		color.Red("At least 10$ needed")
-		os.Exit(0)
+	newCycle, err := PrepareNewCycle()
+	if err != nil {
+		return fmt.Errorf("error preparing new cycle: %v", err)
 	}
 
-	btcPrice := client.GetLastPriceBTC()
+	client := GetClientByExchange(newCycle.Exchange)
 
-	fmt.Printf("%s %s\n",
-		color.CyanString("BTC Price"),
-		color.YellowString("%.2f", btcPrice),
-	)
+	//// Prepare Order
+	buyPriceStr := fmt.Sprintf("%.2f", newCycle.Buy.Price)
+	buyBTCQuantityStr := fmt.Sprintf("%.6f", newCycle.Quantity)
 
-	newCycleUSDC := CalcAmountUSD(freeBalance, percent)
-
-	fmt.Printf("%s %s\n",
-		color.CyanString("USD for this new cycle:"),
-		color.YellowString("%.2f", newCycleUSDC),
-	)
-
-	newCycleBTC := CalcAmountBTC(newCycleUSDC, btcPrice)
-	newCycleBTCFormated := FormatSmallFloat(newCycleBTC)
-	fmt.Printf("%s %s\n",
-		color.CyanString("BTC for this new cycle:"),
-		color.YellowString(newCycleBTCFormated),
-	)
-
-	buyPrice := btcPrice - buyOffset
-	fmt.Printf("%s %s\n",
-		color.CyanString("Buy Price"),
-		color.YellowString("%.2f", buyPrice),
-	)
-
-	sellPrice := btcPrice + sellOffset
-	fmt.Printf("%s %s\n",
-		color.CyanString("Sell Price"),
-		color.YellowString("%.2f", sellPrice),
-	)
-
-	// Prepare Order
-	buyPriceStr := fmt.Sprintf("%.2f", buyPrice)
-
-	body, err := client.CreateOrder("BUY", buyPriceStr, newCycleBTCFormated)
+	body, err := client.CreateOrder("BUY", buyPriceStr, buyBTCQuantityStr)
 	if err != nil {
 		color.Red("Order failed:", err)
 		tools.Telegram("Order failed: " + err.Error())
 		os.Exit(0)
 	}
-
-	orderId, _, _, err := jsonparser.Get(body, "orderId")
+	buyOrderId, _, _, err := jsonparser.Get(body, "orderId")
 	if err != nil {
 		tools.Telegram("Order failed: " + err.Error())
-		log.Fatal(err)
+		log.Fatal("Order failed: " + err.Error())
 	}
 
+	log.Println("Buy Order ID: " + string(buyOrderId))
+
+	newCycle.Buy.ID = string(buyOrderId)
+	newCycle.Status = database.Buy
+
 	// Insert in database
-	cycle := database.Cycle{
-		Exchange:  "mexc", // Todo dynamic
-		Status:    "buy",
-		Quantity:  newCycleBTC,
-		BuyPrice:  buyPrice,
-		BuyId:     string(orderId),
-		SellPrice: sellPrice,
-		SellId:    "",
+	_, err = database.CycleNew(newCycle)
+	if err != nil {
+		return fmt.Errorf("error inserting new cycle in database: %v", err)
 	}
-	docId := database.NewCycle(&cycle)
 
 	message := "New Cycle successfully inserted in database"
 	color.Green(message)
-	Log(message)
+	//Log(message)
 
-	// Save data without logs
-	Export(false)
+	return nil
+}
 
+// PrepareNewCycle Prepare new cycle before place order and insert in db
+func PrepareNewCycle() (*database.Cycle, error) {
+	newCycle := database.Cycle{}
+
+	// Exchange
+	exchange := getExchange()
+	newCycle.Exchange = exchange
+
+	// Percent
+	percent := getPercent()
+	newCycle.MetaData.Percent = percent
+
+	// BuyOffset
+	buyOffset := getOffset("BUY_OFFSET")
+	newCycle.Buy.Offset = buyOffset
+
+	// SellOffset
+	sellOffset := getOffset("SELL_OFFSET")
+	newCycle.Sell.Offset = sellOffset
+
+	client := GetClientByExchange(exchange)
+	client.CheckConnection()
+
+	// BTCPrice
+	btcPrice, err := client.GetLastPriceBTC()
+	if err != nil {
+		return nil, err
+	}
+	newCycle.MetaData.BTCPrice = btcPrice
+
+	// BuyPrice
+	buyPrice := btcPrice + float64(newCycle.Buy.Offset)
+	newCycle.Buy.Price = buyPrice
+
+	// Sell Price
+	sellPrice := btcPrice + float64(newCycle.Sell.Offset)
+	newCycle.Sell.Price = sellPrice
+
+	// FreeBalanceUSD
+	freeBalance, err := client.GetBalanceUSD()
+	if err != nil {
+		return nil, fmt.Errorf("error getting free balance: %v", err)
+	}
+	if freeBalance < 10 {
+		color.Red("At least 10$ needed")
+		os.Exit(0)
+	}
+	newCycle.MetaData.FreeBalanceUSD = freeBalance
+
+	// USDDedicated
+	usdDedicated := CalcAmountUSD(freeBalance, strconv.Itoa(newCycle.MetaData.Percent))
+	newCycle.MetaData.USDDedicated = usdDedicated
+
+	// BTCQuantity
+	btcQuantity := CalcAmountBTC(newCycle.MetaData.USDDedicated, newCycle.Buy.Price)
+	newCycle.Quantity = btcQuantity
+
+	// Display Data
+	const fieldWidth = 27
+	var formatString = "%-" + strconv.Itoa(fieldWidth) + "s %s\n"
+
+	fmt.Printf(formatString,
+		color.CyanString("Exchange"),
+		color.YellowString(newCycle.Exchange),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Percent"),
+		color.YellowString(strconv.Itoa(newCycle.MetaData.Percent)),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Buy Offset"),
+		color.YellowString(strconv.Itoa(newCycle.Buy.Offset)),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Sell Offset"),
+		color.YellowString(strconv.Itoa(newCycle.Sell.Offset)),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("BTC Price"),
+		color.YellowString("%.2f", newCycle.MetaData.BTCPrice),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Buy Price"),
+		color.YellowString("%.2f", newCycle.Buy.Price),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Sell Price"),
+		color.YellowString("%.2f", newCycle.Sell.Price),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Free Balance"),
+		color.YellowString("%.2f", newCycle.MetaData.FreeBalanceUSD),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("Dedicated Balance"),
+		color.YellowString("%.2f", newCycle.MetaData.USDDedicated),
+	)
+
+	fmt.Printf(formatString,
+		color.CyanString("BTC Quantity"),
+		color.YellowString("%.6f", newCycle.Quantity),
+	)
+
+	return &newCycle, nil
+}
+
+func getExchange() string {
+	exchange := os.Getenv("EXCHANGE")
+	if exchange == "" {
+		color.Red("EXCHANGE env variable is required")
+		os.Exit(0)
+	}
+	return exchange
+}
+
+func getPercent() int {
+	percentStr := os.Getenv("PERCENT")
+	if percentStr == "" {
+		color.Red("PERCENT env variable is required")
+		os.Exit(0)
+	}
+	percent, err := strconv.Atoi(percentStr)
+	if err != nil {
+		color.Red("PERCENT env variable must be a number")
+		os.Exit(0)
+	}
+	return percent
+}
+
+func getOffset(key string) int {
+	offset := os.Getenv(key)
+	if offset == "" {
+		color.Red(key + " env variable is required")
+		os.Exit(0)
+	}
+	offsetInt, err := strconv.Atoi(offset)
+	if err != nil {
+		color.Red(key + " env variable must be a number")
+		os.Exit(0)
+	}
+	return offsetInt
+}
+
+func notifTelegram(cycle *database.Cycle) {
 	if os.Getenv("TELEGRAM") == "1" {
-		doc := database.GetById(docId)
-		idInt := doc.Get("idInt")
-
 		var message = ""
-		message += fmt.Sprintf("ℹ️ New Cycle: %d \n", idInt)
-		message += fmt.Sprintf("✨ Quantity: %.6f \n", newCycleBTC)
-		message += fmt.Sprintf("📉 Buy Price: %.2f \n", buyPrice)
-		message += fmt.Sprintf("📈 Sell Price: %.2f \n", sellPrice)
+		message += fmt.Sprintf("ℹ️ New Cycle: %d \n", cycle.Id)
+		message += fmt.Sprintf("✨ Quantity: %.6f \n", cycle.Quantity)
+		message += fmt.Sprintf("📉 Buy Price: %.2f \n", cycle.Buy.Price)
+		message += fmt.Sprintf("📈 Sell Price: %.2f \n", cycle.Sell.Price)
 		tools.Telegram(message)
 	}
 }

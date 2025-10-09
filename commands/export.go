@@ -2,10 +2,9 @@ package commands
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/ostafen/clover"
-	"log"
 	"main/database"
 	"os"
 	"path"
@@ -55,29 +54,37 @@ func ToCSV(displayLogs bool) {
 
 	// Write header
 	header := []string{
-		"IdInt", "Exchange", "Status", "Quantity",
-		"BuyPrice", "SellPrice", "Gain USD", "BuyId", "SellId", "_id",
+		"Id",
+		"Exchange",
+		"Status",
+		"Quantity",
+		"BuyPrice",
+		"SellPrice",
+		"Gain USD",
+		"BuyId",
+		"SellId",
 	}
 	if err := writer.Write(header); err != nil {
 		panic(fmt.Errorf("failed to write header: %w", err))
 	}
 
 	// Write each row
-	cycles := database.List()
+	cycles, err := database.CycleList()
+	if err != nil {
+		panic(fmt.Errorf("failed to get cycles: %w", err))
+	}
+
 	for _, cycle := range cycles {
 		row := []string{
-			fmt.Sprintf("%v", cycle.Get("idInt")),
-			fmt.Sprintf("%v", cycle.Get("exchange")),
-			fmt.Sprintf("%v", cycle.Get("status")),
-			fmt.Sprintf("%v", cycle.Get("quantity")),
-			fmt.Sprintf("%v", cycle.Get("buyPrice")),
-			fmt.Sprintf("%v", cycle.Get("sellPrice")),
-
-			fmt.Sprintf("%v", CalcAbsoluteGainByCycle(cycle)),
-
-			fmt.Sprintf("%v", cycle.Get("buyId")),
-			fmt.Sprintf("%v", cycle.Get("sellId")),
-			fmt.Sprintf("%v", cycle.Get("_id")),
+			fmt.Sprintf("%v", cycle.Id),
+			fmt.Sprintf("%v", cycle.Exchange),
+			fmt.Sprintf("%v", cycle.Status),
+			fmt.Sprintf("%v", cycle.Quantity),
+			fmt.Sprintf("%v", cycle.Buy.Price),
+			fmt.Sprintf("%v", cycle.Sell.Price),
+			fmt.Sprintf("%v", CalcAbsoluteGainByCycle(&cycle)),
+			fmt.Sprintf("%v", cycle.Buy.ID),
+			fmt.Sprintf("%v", cycle.Sell.ID),
 		}
 
 		if err := writer.Write(row); err != nil {
@@ -93,17 +100,19 @@ func ToJSON(displayLogs bool) {
 	fileName := fileNamePrefix() + ".json"
 	fileName = RootDir() + "/" + filepath.Clean(fileName)
 
-	db := database.GetDB()
-	defer func(db *clover.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatalf("can't close database %s", err)
-		}
-	}(db)
-
-	err := db.ExportCollection(database.CollectionName, fileName)
+	cycles, err := database.CycleList()
 	if err != nil {
-		log.Fatal("Can't export collection to JSON file: " + fileName)
+		panic(fmt.Errorf("failed to get database: %w", err))
+	}
+
+	jsonData, err := json.MarshalIndent(cycles, "", "  ")
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal json: %w", err))
+	}
+
+	err = os.WriteFile(fileName, jsonData, 0644)
+	if err != nil {
+		panic(fmt.Errorf("failed to write JSON file '%s': %w", fileName, err))
 	}
 
 	if displayLogs {

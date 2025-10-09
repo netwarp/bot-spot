@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
-	"github.com/ostafen/clover"
 	"io"
 	"log"
+	"main/database"
 	"main/exchanges/mexc"
 	"net/http"
 	"os"
@@ -19,8 +19,8 @@ import (
 
 type ExchangeClient interface {
 	CheckConnection()
-	GetBalanceUSD() float64
-	GetLastPriceBTC() float64
+	GetBalanceUSD() (float64, error)
+	GetLastPriceBTC() (float64, error)
 	SetBaseURL(url string)
 	CreateOrder(side, price, quantity string) ([]byte, error)
 	GetOrderById(id string) ([]byte, error)
@@ -147,11 +147,11 @@ func Log(message string) {
 	log.Println(message)
 }
 
-func CalcAbsoluteGainByCycle(cycle *clover.Document) float64 {
+func CalcAbsoluteGainByCycle(cycle *database.Cycle) float64 {
 
-	quantity, _ := cycle.Get("quantity").(float64)
-	buyPrice, _ := cycle.Get("buyPrice").(float64)
-	sellPrice, _ := cycle.Get("sellPrice").(float64)
+	quantity := cycle.Quantity
+	buyPrice := cycle.Buy.Price
+	sellPrice := cycle.Sell.Price
 
 	buyTotal := quantity * buyPrice
 	sellTotal := quantity * sellPrice
