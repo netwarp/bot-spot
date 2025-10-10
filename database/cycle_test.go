@@ -1,34 +1,34 @@
-package database
+package database_test
 
 import (
+	"github.com/joho/godotenv"
 	"log"
+	"main/commands"
+	"main/database"
 	"testing"
 )
 
 func TestCycleNew(t *testing.T) {
-	cycle := &Cycle{
-		Exchange: "mexc",
-		Status:   Buy,
-		Quantity: 100,
-		Buy: BuyStruct{
-			Price: 98000,
-			ID:    "123456789",
-		},
-		Sell: SellStruct{
-			Price: 102000,
-			ID:    "123456789",
-		},
-	}
+	godotenv.Load("../bot.conf")
 
-	err := CycleNew(cycle)
+	cycle, err := commands.PrepareNewCycle()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("%#v\n", cycle)
 
+	cycle.Buy.ID = "xxx"
+	cycle.Status = database.Buy
+
+	id, err := database.CycleNew(cycle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(id)
 }
 
 func TestCycleList(t *testing.T) {
-	cycles, err := CycleList()
+	cycles, err := database.CycleList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestCycleList(t *testing.T) {
 
 func TestCycleGetById(t *testing.T) {
 	id := 1
-	cycle, err := CycleGetById(id)
+	cycle, err := database.CycleGetById(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestCycleGetById(t *testing.T) {
 
 func TestCycleDeleteById(t *testing.T) {
 	id := 1
-	err := CycleDeleteById(id)
+	err := database.CycleDeleteById(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestCycleDeleteById(t *testing.T) {
 func TestCycleListPerPage(t *testing.T) {
 	page := 1
 	perPage := 10
-	cycles, err := CycleListPerPage(page, perPage)
+	cycles, err := database.CycleListPerPage(page, perPage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,9 +67,9 @@ func TestCycleListPerPage(t *testing.T) {
 func TestCycleUpdate(t *testing.T) {
 	id := 1
 	field := "status"
-	value := Sell
+	value := database.Sell
 
-	result, err := CycleUpdate(id, field, value)
+	result, err := database.CycleUpdate(id, field, value)
 	if err != nil {
 		t.Fatal(err)
 	}

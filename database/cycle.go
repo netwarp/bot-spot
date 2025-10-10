@@ -47,8 +47,7 @@ func CycleNew(cycle *Cycle) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error getting database: %v", err)
 	}
-
-	id, err := db.Exec("INSERT INTO cycles (exchange, status, quantity, buyPrice, buyId, sellPrice, sellId) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id", cycle.Exchange, cycle.Status, cycle.Quantity, cycle.Buy.Price, cycle.Buy.ID, cycle.Sell.Price, cycle.Sell.ID)
+	id, err := db.Exec("INSERT INTO cycles (exchange, status, quantity, buyPrice, buyId, sellPrice, sellId, freeBalance, dedicatedBalance, buyOffset, sellOffset, percent, btcPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id", cycle.Exchange, cycle.Status, cycle.Quantity, cycle.Buy.Price, cycle.Buy.ID, cycle.Sell.Price, cycle.Sell.ID, cycle.MetaData.FreeBalanceUSD, cycle.MetaData.USDDedicated, cycle.Buy.Offset, cycle.Sell.Offset, cycle.MetaData.Percent, cycle.MetaData.BTCPrice)
 	if err != nil {
 		return 0, fmt.Errorf("error inserting cycle: %v", err)
 	}
@@ -79,7 +78,22 @@ func CycleList() ([]Cycle, error) {
 
 	for rows.Next() {
 		var cycle Cycle
-		err := rows.Scan(&cycle.Id, &cycle.Exchange, &cycle.Status, &cycle.Quantity, &cycle.Buy.Price, &cycle.Buy.ID, &cycle.Sell.Price, &cycle.Sell.ID)
+		err := rows.Scan(
+			&cycle.Id,
+			&cycle.Exchange,
+			&cycle.Status,
+			&cycle.Quantity,
+			&cycle.Buy.Price,
+			&cycle.Buy.ID,
+			&cycle.Sell.Price,
+			&cycle.Sell.ID,
+			&cycle.MetaData.FreeBalanceUSD,
+			&cycle.MetaData.USDDedicated,
+			&cycle.Sell.Offset,
+			&cycle.Buy.Offset,
+			&cycle.MetaData.Percent,
+			&cycle.MetaData.BTCPrice,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +117,12 @@ func CycleGetById(id int) (*Cycle, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
 
 	if !rows.Next() {
 		if err = rows.Err(); err != nil {
@@ -113,7 +132,7 @@ func CycleGetById(id int) (*Cycle, error) {
 	}
 
 	var cycle Cycle
-	err = rows.Scan(&cycle.Id, &cycle.Exchange, &cycle.Status, &cycle.Quantity, &cycle.Buy.Price, &cycle.Buy.ID, &cycle.Sell.Price, &cycle.Sell.ID)
+	err = rows.Scan(&cycle.Id, &cycle.Exchange, &cycle.Status, &cycle.Quantity, &cycle.Buy.Price, &cycle.Buy.ID, &cycle.Sell.Price, &cycle.Sell.ID, &cycle.MetaData.FreeBalanceUSD, &cycle.MetaData.USDDedicated, &cycle.Buy.Offset, &cycle.Sell.Offset, &cycle.MetaData.Percent, &cycle.MetaData.BTCPrice)
 	if err != nil {
 		return nil, err
 	}
@@ -151,12 +170,17 @@ func CycleListPerPage(page int, itemsPerPage int) ([]Cycle, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
 
 	var cycles []Cycle
 	for rows.Next() {
 		var cycle Cycle
-		err := rows.Scan(&cycle.Id, &cycle.Exchange, &cycle.Status, &cycle.Quantity, &cycle.Buy.Price, &cycle.Buy.ID, &cycle.Sell.Price, &cycle.Sell.ID)
+		err = rows.Scan(&cycle.Id, &cycle.Exchange, &cycle.Status, &cycle.Quantity, &cycle.Buy.Price, &cycle.Buy.ID, &cycle.Sell.Price, &cycle.Sell.ID, &cycle.MetaData.FreeBalanceUSD, &cycle.MetaData.USDDedicated, &cycle.Buy.Offset, &cycle.Sell.Offset, &cycle.MetaData.Percent, &cycle.MetaData.BTCPrice)
 		if err != nil {
 			return nil, err
 		}

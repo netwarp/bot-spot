@@ -59,10 +59,11 @@ func New() error {
 	if err != nil {
 		return fmt.Errorf("error inserting new cycle in database: %v", err)
 	}
-
 	message := "New Cycle successfully inserted in database"
 	color.Green(message)
-	//Log(message)
+	Log(message)
+
+	notifTelegram(newCycle)
 
 	return nil
 }

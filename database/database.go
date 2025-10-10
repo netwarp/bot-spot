@@ -103,6 +103,24 @@ func InitDatabase() (err error) {
 	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN sellId TEXT"); err != nil {
 		return err
 	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN freeBalance REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN dedicatedBalance REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN buyOffset REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN sellOffset REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN percent REAL"); err != nil {
+		return err
+	}
+	if err = execAndIgnoreDuplicateColumn("ALTER TABLE cycles ADD COLUMN btcPrice REAL"); err != nil {
+		return err
+	}
 
 	// Create table cfg_items
 	_, err = db.Exec("CREATE TABLE IF NOT EXISTS cfg_items (key TEXT PRIMARY KEY, value TEXT)")
@@ -114,11 +132,11 @@ func InitDatabase() (err error) {
 }
 
 func GetDB() (sqlDB *sql.DB, err error) {
-	path, err := GetDatabasePath()
+	dbPath, err := GetDatabasePath()
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
