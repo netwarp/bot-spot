@@ -71,7 +71,7 @@ func main() {
 	case "--update", "-u":
 		err := commands.Update()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		break
 	}

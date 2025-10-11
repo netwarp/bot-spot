@@ -47,7 +47,7 @@ func TestCycleGetById(t *testing.T) {
 }
 
 func TestCycleDeleteById(t *testing.T) {
-	id := 1
+	id := 2
 	err := database.CycleDeleteById(id)
 	if err != nil {
 		t.Fatal(err)

@@ -50,20 +50,26 @@ func GetDatabasePath() (string, error) {
 }
 
 func InitDatabase() (err error) {
-	dbPath, err := GetDatabasePath()
+	db, err := GetDB()
 	if err != nil {
 		return err
 	}
-
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
+	defer func() {
+		cerr := db.Close()
+		if cerr != nil {
+			log.Printf("warning: closing db in InitDatabase: %v", cerr)
+		}
+	}()
 
 	// Ping or create
 	if err := db.Ping(); err != nil {
 		return err
 	}
+
+	// Ensure sane defaults for locking/concurrency
+	_, _ = db.Exec("PRAGMA journal_mode=WAL;")
+	_, _ = db.Exec("PRAGMA busy_timeout=5000;")
+	_, _ = db.Exec("PRAGMA synchronous=NORMAL;")
 
 	// Utility function
 	execAndIgnoreDuplicateColumn := func(stmt string) error {
@@ -140,5 +146,12 @@ func GetDB() (sqlDB *sql.DB, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return db, err
+	// Limit connections to avoid writer conflicts with SQLite
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	// Apply pragmas on each new handle (best-effort)
+	_, _ = db.Exec("PRAGMA busy_timeout=5000;")
+	_, _ = db.Exec("PRAGMA journal_mode=WAL;")
+	_, _ = db.Exec("PRAGMA synchronous=NORMAL;")
+	return db, nil
 }

@@ -3,6 +3,9 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
+	"time"
 )
 
 type Status string
@@ -47,17 +50,29 @@ func CycleNew(cycle *Cycle) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error getting database: %v", err)
 	}
-	id, err := db.Exec("INSERT INTO cycles (exchange, status, quantity, buyPrice, buyId, sellPrice, sellId, freeBalance, dedicatedBalance, buyOffset, sellOffset, percent, btcPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id", cycle.Exchange, cycle.Status, cycle.Quantity, cycle.Buy.Price, cycle.Buy.ID, cycle.Sell.Price, cycle.Sell.ID, cycle.MetaData.FreeBalanceUSD, cycle.MetaData.USDDedicated, cycle.Buy.Offset, cycle.Sell.Offset, cycle.MetaData.Percent, cycle.MetaData.BTCPrice)
-	if err != nil {
+	defer func() { _ = db.Close() }()
+
+	// Retry INSERT on transient SQLITE_BUSY/database is locked errors
+	var res sql.Result
+	for attempt := 0; attempt < 5; attempt++ {
+		res, err = db.Exec("INSERT INTO cycles (exchange, status, quantity, buyPrice, buyId, sellPrice, sellId, freeBalance, dedicatedBalance, buyOffset, sellOffset, percent, btcPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id", cycle.Exchange, cycle.Status, cycle.Quantity, cycle.Buy.Price, cycle.Buy.ID, cycle.Sell.Price, cycle.Sell.ID, cycle.MetaData.FreeBalanceUSD, cycle.MetaData.USDDedicated, cycle.Buy.Offset, cycle.Sell.Offset, cycle.MetaData.Percent, cycle.MetaData.BTCPrice)
+		if err == nil {
+			break
+		}
+		if strings.Contains(err.Error(), "SQLITE_BUSY") || strings.Contains(err.Error(), "database is locked") {
+			time.Sleep(time.Duration(100*(attempt+1)) * time.Millisecond)
+			continue
+		}
 		return 0, fmt.Errorf("error inserting cycle: %v", err)
 	}
+	if err != nil {
+		return 0, fmt.Errorf("error inserting cycle after retries: %v", err)
+	}
 
-	insertId, err := id.LastInsertId()
+	insertId, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
 	}
-
-	defer db.Close()
 
 	return insertId, nil
 }
@@ -67,6 +82,7 @@ func CycleList() ([]Cycle, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = db.Close() }()
 
 	var cycles []Cycle
 
@@ -112,6 +128,7 @@ func CycleGetById(id int) (*Cycle, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = db.Close() }()
 
 	rows, err := db.Query("SELECT * FROM cycles WHERE id = ? LIMIT 1", id)
 	if err != nil {
@@ -149,13 +166,20 @@ func CycleDeleteById(id int) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = db.Close() }()
 
-	_, err = db.Exec("DELETE FROM cycles WHERE id = ?", id)
-	if err != nil {
+	for attempt := 0; attempt < 5; attempt++ {
+		_, err = db.Exec("DELETE FROM cycles WHERE id = ?", id)
+		if err == nil {
+			return nil
+		}
+		if strings.Contains(err.Error(), "SQLITE_BUSY") || strings.Contains(err.Error(), "database is locked") {
+			time.Sleep(time.Duration(100*(attempt+1)) * time.Millisecond)
+			continue
+		}
 		return err
 	}
-
-	return nil
+	return err
 }
 
 func CycleListPerPage(page int, itemsPerPage int) ([]Cycle, error) {
@@ -164,6 +188,7 @@ func CycleListPerPage(page int, itemsPerPage int) ([]Cycle, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = db.Close() }()
 
 	skip := (page - 1) * itemsPerPage
 	rows, err := db.Query("SELECT * FROM cycles ORDER BY id DESC LIMIT ? OFFSET ?", itemsPerPage, skip)
@@ -198,11 +223,41 @@ func CycleUpdate(id int, field string, value interface{}) (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		cerr := db.Close()
+		if cerr != nil {
+			log.Printf("warning: closing db in CycleUpdate: %v", cerr)
+		}
+	}()
 
-	result, err := db.Exec("UPDATE cycles SET "+field+" = ? WHERE id = ?", value, id)
-	if err != nil {
+	var result sql.Result
+	for attempt := 0; attempt < 5; attempt++ {
+		result, err = db.Exec("UPDATE cycles SET "+field+" = ? WHERE id = ?", value, id)
+		if err == nil {
+			return result, nil
+		}
+		if strings.Contains(err.Error(), "SQLITE_BUSY") || strings.Contains(err.Error(), "database is locked") {
+			time.Sleep(time.Duration(100*(attempt+1)) * time.Millisecond)
+			continue
+		}
 		return nil, err
 	}
+	return nil, err
+}
 
-	return result, nil
+// helpers
+func (c *Cycle) CalcPercent() float64 {
+	totalBuy := c.Buy.Price * c.Quantity
+	totalSell := c.Sell.Price * c.Quantity
+
+	percent := (totalSell - totalBuy) / totalBuy * 100
+	return percent
+}
+
+func (c *Cycle) CalcProfit() float64 {
+	totalBuy := c.Buy.Price * c.Quantity
+	totalSell := c.Sell.Price * c.Quantity
+
+	profit := totalSell - totalBuy
+	return profit
 }

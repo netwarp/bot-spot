@@ -49,8 +49,6 @@ func New() error {
 		log.Fatal("Order failed: " + err.Error())
 	}
 
-	log.Println("Buy Order ID: " + string(buyOrderId))
-
 	newCycle.Buy.ID = string(buyOrderId)
 	newCycle.Status = database.Buy
 

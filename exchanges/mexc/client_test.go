@@ -25,7 +25,7 @@ func TestCheckConnection(t *testing.T) {
 }
 
 func TestClient_GetBalanceUSD(t *testing.T) {
-	balance := client.GetBalanceUSD()
+	balance, _ := client.GetBalanceUSD()
 	fmt.Println("balance:", balance)
 }
 
