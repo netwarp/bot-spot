@@ -27,8 +27,7 @@
 <section class="bg-gray-900 py-2">
     <div class="mx-auto max-w-7xl px-6">
         <div class="mx-auto max-w-2xl lg:max-w-none">
-
-            <dl class="mt-2 grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-5">
+            <dl class="mt-2 grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-4">
                 <div class="flex flex-col bg-white/5 p-4">
                     <dt class="text-sm font-semibold leading-6 text-gray-300">Cycles completed</dt>
                     <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ .cyclesCompleted }}/{{ .cyclesCount }}</dd>
@@ -42,12 +41,8 @@
                     <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ printf "%.2f" .totalSell }} $</dd>
                 </div>
                 <div class="flex flex-col bg-white/5 p-4">
-                    <dt class="text-sm font-semibold leading-6 text-gray-300">Gain %</dt>
-                    <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ printf "%.2f" .percent }} %</dd>
-                </div>
-                <div class="flex flex-col bg-white/5 p-4">
                     <dt class="text-sm font-semibold leading-6 text-gray-300">Gain $</dt>
-                    <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ printf "%.2f" .gainAbs }}  $</dd>
+                    <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ printf "%.2f" .totalProfit }}  $</dd>
                 </div>
             </dl>
         </div>
@@ -56,7 +51,6 @@
 <section class="container px-4 mx-auto">
     <div class="-mx-4 -my-2 overflow-x-auto">
         <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-
             <div class="mb-4">
                 <label for="statusFilter" class="text-white mr-2">Filter:</label>
                 <select id="statusFilter" class="w-72 p-1 rounded bg-gray-800 text-white border border-gray-600">
@@ -74,7 +68,6 @@
                         <th scope="col" class="px-12 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
                             Id
                         </th>
-
 
                         <th scope="col" class="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
                             Exchange
@@ -111,44 +104,56 @@
                         <th scope="col" class="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
                             Sell Id
                         </th>
-
                         <th scope="col" class="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
-                            UUID
+                            Offsets
+                        </th>
+                        <th scope="col" class="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                            BTC Price
+                        </th>
+                        <th scope="col" class="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                            Percent
+                        </th>
+                        <th scope="col" class="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                            USD dedicated
                         </th>
                     </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-900">
-                    {{ range .Cycles }}
-                    <tr class="{{ .status }}">
-                        <td class="px-4 py-4 text-xs text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .idInt }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .exchange }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .status }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .quantity }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .buyPrice }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .sellPrice }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .change }}</td>
-                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .gainUSD }}</td>
+                    {{ range .cycles }}
+                    <tr class="{{ .Status }}">
+                        <td class="px-4 py-4 text-xs text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .Id }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .Exchange }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .Status }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ printf "%.8f" .Quantity }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ printf "%.6f" .Buy.Price }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ printf "%.6f" .Sell.Price }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ printf "%.2f" .CalcPercent }}%</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ printf "%.2f" .CalcProfit }}</td>
                         <td class="px-4 py-4 text-xs text-gray-100 dark:text-gray-300 whitespace-nowrap">
-                            {{ if .buyId }}
+                            {{ if .Buy.ID }}
                             <button
                                     class="bg-blue-500 active:bg-blue-800 hover:bg-blue-700 cursor-pointer text-white text-xs px-2 py-1 rounded transition"
-                                    data-id="{{ .buyId }}" data-exchange="{{ .exchange }}"
+                                    data-id="{{ .Buy.ID }}" data-exchange="{{ .Exchange }}"
                             >
-                                {{ .buyId }}
+                                {{ .Buy.ID }}
                             </button>
                             {{ end }}
                         </td>
                         <td class="px-4 py-4 text-xs text-gray-100 dark:text-gray-300 whitespace-nowrap">
-                            {{ if .sellId }}
+                            {{ if .Sell.ID }}
                             <button
                                     class="bg-red-500 active:bg-red-800 hover:bg-red-700 cursor-pointer text-white text-xs px-2 py-1 rounded transition"
-                                    data-id="{{ .sellId }}" data-exchange="{{ .exchange }}"
+                                    data-id="{{ .Sell.ID }}" data-exchange="{{ .Exchange }}"
                             >
-                                {{ .sellId }}
+                                {{ .Sell.ID }}
                             </button>
                             {{ end }}
                         </td>
-                        <td class="px-4 py-4 text-xs text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ ._id }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .Buy.Offset }} / {{ .Sell.Offset }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .MetaData.BTCPrice }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ .MetaData.Percent }}</td>
+                        <td class="px-4 py-4 text-sm text-gray-100 dark:text-gray-300 whitespace-nowrap">{{ printf "%.2f" .MetaData.USDDedicated }}</td>
+
                     </tr>
                     {{ end }}
                     </tbody>

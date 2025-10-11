@@ -105,8 +105,8 @@ func CycleList() ([]Cycle, error) {
 			&cycle.Sell.ID,
 			&cycle.MetaData.FreeBalanceUSD,
 			&cycle.MetaData.USDDedicated,
-			&cycle.Sell.Offset,
 			&cycle.Buy.Offset,
+			&cycle.Sell.Offset,
 			&cycle.MetaData.Percent,
 			&cycle.MetaData.BTCPrice,
 		)
@@ -260,4 +260,27 @@ func (c *Cycle) CalcProfit() float64 {
 
 	profit := totalSell - totalBuy
 	return profit
+}
+
+// String returns a detailed string representation of a Cycle, useful for logs.
+func (c Cycle) String() string {
+	return fmt.Sprintf(
+		"Cycle{id:%d, ex:%s, status:%s, qty:%.8f, buy:{off:%d price:%.8f id:%s}, sell:{off:%d price:%.8f id:%s}, meta:{freeUSD:%.2f dedicatedUSD:%.2f percent:%d btc:%.2f}, profit:%.8f, pct:%.4f%%}",
+		c.Id,
+		c.Exchange,
+		c.Status,
+		c.Quantity,
+		c.Buy.Offset,
+		c.Buy.Price,
+		c.Buy.ID,
+		c.Sell.Offset,
+		c.Sell.Price,
+		c.Sell.ID,
+		c.MetaData.FreeBalanceUSD,
+		c.MetaData.USDDedicated,
+		c.MetaData.Percent,
+		c.MetaData.BTCPrice,
+		c.CalcProfit(),
+		c.CalcPercent(),
+	)
 }

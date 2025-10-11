@@ -65,7 +65,7 @@ func main() {
 	case "--new", "-n":
 		err := commands.New()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		break
 	case "--update", "-u":
@@ -74,6 +74,15 @@ func main() {
 			log.Fatal(err)
 		}
 		break
+	case "--server", "-s":
+		err := commands.Server()
+		if err != nil {
+			log.Fatal(err)
+		}
+		break
+	default:
+		menu()
+		return
 	}
 
 	//actions := map[string]func(){
