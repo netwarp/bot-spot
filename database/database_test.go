@@ -5,11 +5,6 @@ import (
 	"testing"
 )
 
-func TestRootDir(t *testing.T) {
-	dir := RootDir()
-	log.Println(dir)
-}
-
 func TestGetDatabasePath(t *testing.T) {
 	path, err := GetDatabasePath()
 	if err != nil {

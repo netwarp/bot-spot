@@ -39,22 +39,21 @@ func Cancel() error {
 	exchange := cycle.Exchange
 	client := GetClientByExchange(exchange)
 
-	buyId := cycle.Buy.ID
-	sellId := cycle.Sell.ID
-
-	res, err := client.CancelOrder(buyId)
-	if err != nil {
-		log.Println(string(res))
-		return err
+	if status == database.Buy {
+		buyId := cycle.Buy.ID
+		res, err := client.CancelOrder(buyId)
+		if err != nil {
+			log.Println(string(res))
+			return err
+		}
+	} else if status == database.Sell {
+		sellId := cycle.Sell.ID
+		res, err := client.CancelOrder(sellId)
+		if err != nil {
+			log.Println(string(res))
+			return err
+		}
 	}
-	fmt.Println(string(res))
-
-	res, err = client.CancelOrder(sellId)
-	if err != nil {
-		log.Println(string(res))
-		return err
-	}
-	fmt.Println(string(res))
 
 	err = database.CycleDeleteById(id)
 	if err != nil {

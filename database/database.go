@@ -3,43 +3,39 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	_ "modernc.org/sqlite"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
-func RootDir() string {
-	_, b, _, _ := runtime.Caller(0)
-	d := path.Join(path.Dir(b))
-	return filepath.Dir(d)
-}
+var (
+	author = "cryptomancien"
+	folder = "bot-db"
+)
 
 func GetDatabasePath() (string, error) {
-	_, fullPath, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("error getting database path")
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("error getting home directory: %v", err)
 	}
 
-	normalizedPath := filepath.ToSlash(fullPath)
-	rootFolderName := "bot-spot-v3"
-	index := strings.LastIndex(normalizedPath, rootFolderName)
-
-	if index == -1 {
-		log.Printf("Folder %s not found in %s", rootFolderName, normalizedPath)
-		return "", errors.New("error getting database path")
-	}
-
-	endIndex := index + len(rootFolderName)
-	projectRootPath := normalizedPath[:endIndex]
-
-	dbDir := filepath.Join(projectRootPath, "db")
+	dbDir := filepath.Join(homeDir, author)
 	if _, err := os.Stat(dbDir); errors.Is(err, os.ErrNotExist) {
-		if mkErr := os.MkdirAll(dbDir, os.ModePerm); mkErr != nil {
-			return "", mkErr
+		err := os.Mkdir(dbDir, os.ModePerm)
+		if err != nil {
+			return "", fmt.Errorf("error creating directory: %v", err)
+		}
+	}
+
+	dbDir = filepath.Join(dbDir, folder)
+	if _, err := os.Stat(dbDir); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(dbDir, os.ModePerm)
+		if err != nil {
+			return "", fmt.Errorf("error creating directory: %v", err)
 		}
 	}
 
@@ -55,9 +51,9 @@ func InitDatabase() (err error) {
 		return err
 	}
 	defer func() {
-		cerr := db.Close()
-		if cerr != nil {
-			log.Printf("warning: closing db in InitDatabase: %v", cerr)
+		err := db.Close()
+		if err != nil {
+			log.Printf("warning: closing db in InitDatabase: %v", err)
 		}
 	}()
 
