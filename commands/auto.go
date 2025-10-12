@@ -31,7 +31,10 @@ func startNewCycle(wg *sync.WaitGroup, lock chan struct{}) {
 	for range time.Tick(duration) {
 		lock <- struct{}{} // acquire
 		fmt.Println(time.Now().Format(time.RubyDate))
-		New()
+		err := New()
+		if err != nil {
+			log.Fatal(err)
+		}
 		<-lock // release
 	}
 }
@@ -43,7 +46,10 @@ func updateRunningCycles(wg *sync.WaitGroup, lock chan struct{}) {
 	for range time.Tick(duration) {
 		lock <- struct{}{} // acquire
 		fmt.Println(time.Now().Format(time.RubyDate))
-		Update()
+		err := Update()
+		if err != nil {
+			log.Fatal(err)
+		}
 		<-lock // release
 	}
 }

@@ -60,9 +60,15 @@ func ToCSV(displayLogs bool) {
 		"Quantity",
 		"BuyPrice",
 		"SellPrice",
-		"Gain USD",
 		"BuyId",
 		"SellId",
+		"Free balance",
+		"Dedicated balance",
+		"Buy offset",
+		"Sell offset",
+		"Percent",
+		"BTC price",
+		"Absolute gain",
 	}
 	if err := writer.Write(header); err != nil {
 		panic(fmt.Errorf("failed to write header: %w", err))
@@ -82,9 +88,15 @@ func ToCSV(displayLogs bool) {
 			fmt.Sprintf("%v", cycle.Quantity),
 			fmt.Sprintf("%v", cycle.Buy.Price),
 			fmt.Sprintf("%v", cycle.Sell.Price),
-			fmt.Sprintf("%v", CalcAbsoluteGainByCycle(&cycle)),
 			fmt.Sprintf("%v", cycle.Buy.ID),
 			fmt.Sprintf("%v", cycle.Sell.ID),
+			fmt.Sprintf("%v", cycle.MetaData.FreeBalanceUSD),
+			fmt.Sprintf("%v", cycle.MetaData.USDDedicated),
+			fmt.Sprintf("%v", cycle.Buy.Offset),
+			fmt.Sprintf("%v", cycle.Sell.Offset),
+			fmt.Sprintf("%v", cycle.MetaData.Percent),
+			fmt.Sprintf("%v", cycle.MetaData.BTCPrice),
+			fmt.Sprintf("%v", cycle.CalcProfit()),
 		}
 
 		if err := writer.Write(row); err != nil {

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
 	"html/template"
@@ -47,7 +48,7 @@ func Server() error {
 
 	mux.HandleFunc("/", displayStats)
 
-	mux.HandleFunc("/api/get-order", fetchOrder)
+	mux.HandleFunc("/api/get-order", getOrder)
 
 	err := http.ListenAndServe(address, mux)
 	if err != nil {
@@ -75,7 +76,7 @@ func displayStats(w http.ResponseWriter, r *http.Request) {
 	totalProfit := 0.0
 
 	for _, cycle := range cycles {
-		fmt.Printf("%+v\n", cycle)
+		//fmt.Printf("%+v\n", cycle)
 		cyclesCount++
 		if cycle.Status == database.Completed {
 			cyclesCompleted++
@@ -110,6 +111,35 @@ func displayStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func fetchOrder(w http.ResponseWriter, r *http.Request) {
+func getOrder(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var data struct {
+		OrderID  string `json:"orderId"`
+		Exchange string `json:"exchange"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding JSON:", err)
+		http.Error(w, `{"error": "invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	client := GetClientByExchange(data.Exchange)
+	order, err := client.GetOrderById(data.OrderID)
+	if err != nil {
+		http.Error(w, `{"error": "order not found"}`, http.StatusNotFound)
+		return
+	}
+
+	_, err = w.Write(order)
+	if err != nil {
+		return
+	}
 }

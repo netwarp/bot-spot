@@ -80,37 +80,29 @@ func main() {
 			log.Fatal(err)
 		}
 		break
+	case "--cancel", "-c":
+		err := commands.Cancel()
+		if err != nil {
+			log.Fatal(err)
+		}
+		break
+	case "--clear", "-cl":
+		err := commands.Clear()
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "--auto", "-a":
+		commands.Auto()
+		break
+	case "--export", "-e":
+		commands.Export(true)
+		break
 	default:
 		menu()
 		return
 	}
 
-	//actions := map[string]func(){
-	//	"--new": func() {
-	//		commands.New()
-	//		return
-	//	},
-	//	"-n":       commands.New,
-	//	"--update": commands.Update,
-	//	"-u":       commands.Update,
-	//	"--server": commands.Server,
-	//	"-s":       commands.Server,
-	//	"--cancel": commands.Cancel,
-	//	"-c":       commands.Cancel,
-	//	"--auto":   commands.Auto,
-	//	"-a":       commands.Auto,
-	//	"--clear":  commands.Clear,
-	//	"-cl":      commands.Clear,
 	//	"--export": func() { commands.Export(true) },
 	//	"-e":       func() { commands.Export(true) },
-	//}
-	//
-	//for key, action := range actions {
-	//	if slices.Contains(args, key) {
-	//		action()
-	//		return
-	//	}
-	//}
 
-	//menu()
 }
