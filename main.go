@@ -101,8 +101,4 @@ func main() {
 		menu()
 		return
 	}
-
-	//	"--export": func() { commands.Export(true) },
-	//	"-e":       func() { commands.Export(true) },
-
 }

@@ -53,13 +53,15 @@ func New() error {
 	newCycle.Status = database.Buy
 
 	// Insert in database
-	_, err = database.CycleNew(newCycle)
+	newId, err := database.CycleNew(newCycle)
 	if err != nil {
 		return fmt.Errorf("error inserting new cycle in database: %v", err)
 	}
 	message := "New Cycle successfully inserted in database"
 	color.Green(message)
 	Log(message)
+
+	newCycle.Id = int(newId)
 
 	notifTelegram(newCycle)
 
