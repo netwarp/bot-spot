@@ -65,6 +65,8 @@ func FromCloverToSqlite() {
 		cycle.Buy.Price = buyPrice
 		cycle.Sell.Price = sellPrice
 		cycle.Exchange = exchange
+		cycle.Buy.ID = oldCycle.BuyID
+		cycle.Sell.ID = oldCycle.SellID
 
 		_, err := database.CycleNew(&cycle)
 		if err != nil {
