@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!--
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+     -->
     <title>Cycles</title>
     <style>
         .completed {
@@ -24,13 +27,92 @@
     </style>
 </head>
 <body class="bg-gray-900">
-<section class="bg-gray-900 py-2">
-    <div class="mx-auto max-w-7xl px-6">
+<section class="bg-gray-900 py-4">
+    <div class="mx-auto px-6">
+        <div class="flex items-center gap-3">
+            <a href="/update" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-cyan-700 active:bg-cyan-800 text-white text-sm px-3 py-1.5 rounded" aria-label="Update">
+                🔄 Update
+            </a>
+            <a href="/new" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm px-3 py-1.5 rounded" aria-label="New">
+                ➕ New
+            </a>
+            <a href="/cancel" class="inline-flex items-center gap-2 bg-rose-700 hover:bg-rose-700 active:bg-rose-800 text-white text-sm px-3 py-1.5 rounded" aria-label="Cancel">
+                ❌ Cancel
+            </a>
+            <a href="/exports" class="bg-fuchsia-800 hover:bg-fuchsia-700 active:bg-fuchsia-800 text-white text-sm px-3 py-1.5 rounded">
+                📥 Exports CSV + JSON
+            </a>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="mx-auto px-6">
         <div class="mx-auto max-w-2xl lg:max-w-none">
-            <dl class="mt-2 grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-4">
+            <form id="settingsForm" action="/new" method="POST" class="mt-4 p-6 bg-gray-800 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold text-white mb-4">Current Bot Settings</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+
+                    <div>
+                        <label for="buyOffset" class="block text-sm font-medium text-gray-300">Buy Offset ($)</label>
+                        <div class="mt-1">
+                            <input type="number" step="0.01" id="buyOffset" name="buyOffset" value="{{ .options.buyOffset }}"
+                                   class="block w-full rounded-md border-gray-600 bg-gray-700 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                   placeholder="e.g., 200.00" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="sellOffset" class="block text-sm font-medium text-gray-300">Sell Offset ($)</label>
+                        <div class="mt-1">
+                            <input type="number" step="0.01" id="sellOffset" name="sellOffset" value="{{ .options.sellOffset }}"
+                                   class="block w-full rounded-md border-gray-600 bg-gray-700 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                   placeholder="e.g., 200.00" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="percent" class="block text-sm font-medium text-gray-300">Percent (%)</label>
+                        <div class="mt-1">
+                            <input type="number" step="0.01" id="percent" name="percent" value="{{ .options.percent }}"
+                                   class="block w-full rounded-md border-gray-600 bg-gray-700 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                   placeholder="e.g., 1.8" required>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-1">
+                        <button type="submit"
+                                class="w-full inline-flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm px-4 py-2 rounded-md shadow-sm transition-colors">
+                            Save Settings
+                        </button>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="bg-gray-900 py-2">
+    <div class="mx-auto px-6">
+        <div class="mx-auto max-w-2xl lg:max-w-none">
+            <dl class="mt-2 grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-6">
                 <div class="flex flex-col bg-white/5 p-4">
                     <dt class="text-sm font-semibold leading-6 text-gray-300">Cycles completed</dt>
                     <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ .cyclesCompleted }}/{{ .cyclesCount }}</dd>
+                </div>
+                <div class="flex flex-col bg-white/5 p-4">
+                    <dt class="text-sm font-semibold leading-6 text-gray-300">Balance BTC</dt>
+                    <dd class="order-first text-xl font-semibold tracking-tight text-white">{{ printf "%.6f" 0.00487 }} BTC</dd>
+                </div>
+                <div class="flex flex-col bg-white/5 p-4">
+                    <dt class="text-sm font-semibold leading-6 text-gray-300">BTC Price
+                        <span class="text-xs mx-6">10:23</span>
+                    </dt>
+                    <dd class="order-first text-xl font-semibold tracking-tight text-white">
+                        104254.25
+                    </dd>
                 </div>
                 <div class="flex flex-col bg-white/5 p-4">
                     <dt class="text-sm font-semibold leading-6 text-gray-300">Total Buy</dt>
@@ -163,6 +245,7 @@
     </div>
 
 </section>
+<script src="/assets/js/main.js"></script>
 <script>
     document.querySelectorAll('button').forEach(button => {
         button.addEventListener('click', async (event) => {
@@ -230,5 +313,6 @@
     document.querySelector('option[value="sell"]').innerText = `Sell (${counts.sell})`
     document.querySelector('option[value="completed"]').innerText = `Completed (${counts.completed})`
 </script>
+
 </body>
 </html>

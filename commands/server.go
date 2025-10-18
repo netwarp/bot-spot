@@ -46,6 +46,10 @@ func Server() error {
 
 	mux := http.NewServeMux()
 
+	fs := http.FileServer(http.Dir("commands/misc/assets"))
+
+	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
+
 	mux.HandleFunc("/", displayStats)
 
 	mux.HandleFunc("/api/get-order", getOrder)
@@ -89,6 +93,18 @@ func displayStats(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	// Compute Balance BTC from USD balance and BTC price
+	balanceBTC := 0.0
+	{
+		client := GetClientByExchange()
+		if client != nil {
+			if usd, err2 := client.GetBalanceUSD(); err2 == nil {
+				if price, err3 := client.GetLastPriceBTC(); err3 == nil && price > 0 {
+					balanceBTC = usd / price
+				}
+			}
+		}
+	}
 	tmpl, err := template.ParseFiles("commands/misc/template.html")
 	if err != nil {
 		http.Error(w, "Error parsing template", http.StatusInternalServerError)
@@ -102,6 +118,7 @@ func displayStats(w http.ResponseWriter, r *http.Request) {
 		"totalBuy":        totalBuy,
 		"totalSell":       totalSell,
 		"totalProfit":     totalProfit,
+		"balanceBTC":      balanceBTC,
 		"page":            page,
 	})
 
