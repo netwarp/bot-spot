@@ -31,7 +31,7 @@ type SellStruct struct {
 type MetaData struct {
 	FreeBalanceUSD float64
 	USDDedicated   float64
-	Percent        int
+	Percent        float64
 	BTCPrice       float64
 }
 

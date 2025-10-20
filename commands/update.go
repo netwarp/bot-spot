@@ -143,17 +143,17 @@ func handleSell(cycle *database.Cycle) error {
 		return nil
 	}
 
-	fmt.Printf("%s %s\n",
-		color.YellowString("%d", cycle.Id),
-		color.GreenString("Order Sell filled"),
-	)
-
 	_, err = database.CycleUpdate(cycle.Id, "status", database.Completed)
 	if err != nil {
 		return fmt.Errorf("error updating cycle status: %v", err)
 	}
 
-	color.Green("Cycle successfully completed")
+	fmt.Printf("%s %s %s %s\n",
+		color.YellowString("%d", cycle.Id),
+		color.GreenString("Order Sell filled - "),
+		color.GreenString("Cycle successfully completed"),
+		color.BlueString("%.2f%%", cycle.CalcPercent()),
+	)
 
 	notifTelegram2(cycle)
 

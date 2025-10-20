@@ -11,11 +11,7 @@ import (
 	"strconv"
 )
 
-func CalcAmountUSD(freeBalance float64, percentStr string) float64 {
-	percent, err := strconv.ParseFloat(percentStr, 64)
-	if err != nil {
-		log.Fatal(err)
-	}
+func CalcAmountUSD(freeBalance float64, percent float64) float64 {
 	return percent * freeBalance / 100
 }
 
@@ -118,7 +114,7 @@ func PrepareNewCycle() (*database.Cycle, error) {
 	newCycle.MetaData.FreeBalanceUSD = freeBalance
 
 	// USDDedicated
-	usdDedicated := CalcAmountUSD(freeBalance, strconv.Itoa(newCycle.MetaData.Percent))
+	usdDedicated := CalcAmountUSD(freeBalance, newCycle.MetaData.Percent)
 	newCycle.MetaData.USDDedicated = usdDedicated
 
 	// BTCQuantity
@@ -136,7 +132,7 @@ func PrepareNewCycle() (*database.Cycle, error) {
 
 	fmt.Printf(formatString,
 		color.CyanString("Percent"),
-		color.YellowString(strconv.Itoa(newCycle.MetaData.Percent)),
+		color.YellowString(fmt.Sprintf("%.2f", newCycle.MetaData.Percent)),
 	)
 
 	fmt.Printf(formatString,
@@ -191,17 +187,24 @@ func getExchange() string {
 	return exchange
 }
 
-func getPercent() int {
+func getPercent() float64 {
 	percentStr := os.Getenv("PERCENT")
 	if percentStr == "" {
 		color.Red("PERCENT env variable is required")
 		os.Exit(0)
 	}
-	percent, err := strconv.Atoi(percentStr)
+
+	percent, err := strconv.ParseFloat(percentStr, 64)
 	if err != nil {
 		color.Red("PERCENT env variable must be a number")
 		os.Exit(0)
 	}
+
+	if percent <= 0 || percent >= 100 {
+		color.Red("PERCENT must be a number greater than 0 and less than 100")
+		os.Exit(0)
+	}
+
 	return percent
 }
 
