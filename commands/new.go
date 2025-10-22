@@ -29,7 +29,7 @@ func New() error {
 
 	client := GetClientByExchange(newCycle.Exchange)
 
-	//// Prepare Order
+	// Prepare Order
 	buyPriceStr := fmt.Sprintf("%.2f", newCycle.Buy.Price)
 	buyBTCQuantityStr := fmt.Sprintf("%.6f", newCycle.Quantity)
 
