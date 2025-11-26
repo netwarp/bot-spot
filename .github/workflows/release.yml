@@ -1,4 +1,4 @@
-name: Build and Release Bot-Spot
+name: Build and Release Bot-Spot -
 
 on:
   push:
