@@ -2,8 +2,12 @@ package commands
 
 import (
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 func TestExport(t *testing.T) {
-	Export(true)
+	_ = godotenv.Load("../bot.conf")
+
+	Export()
 }

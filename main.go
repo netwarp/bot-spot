@@ -95,7 +95,7 @@ func main() {
 		commands.Auto()
 		break
 	case "--export", "-e":
-		commands.Export(true)
+		commands.Export()
 		break
 	default:
 		menu()

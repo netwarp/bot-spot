@@ -4,48 +4,69 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
 	"main/database"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
 	"time"
+
+	"github.com/fatih/color"
 )
 
-func fileNamePrefix() string {
-	// Create an "exports" folder if it doesn't exist
-	if err := os.MkdirAll("exports", os.ModePerm); err != nil {
-		panic(fmt.Errorf("failed to create exports folder: %w", err))
-	}
-
-	timestamp := time.Now().Format("2006-01-02 15-04-05")
-
-	filePrefix := fmt.Sprintf("exports/%s", timestamp)
-	return filePrefix
-}
-
-func RootDir() string {
-	_, b, _, _ := runtime.Caller(0)
-	d := path.Join(path.Dir(b))
-	return filepath.Dir(d)
-}
-
-func ToCSV(displayLogs bool) {
-
-	fileName := fileNamePrefix() + ".csv"
-	if displayLogs {
-		color.Yellow("Export data to CSV file: " + fileName)
-	}
-
-	file, err := os.Create(RootDir() + "/" + filepath.Clean(fileName))
+func ensureExportsDir() string {
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic(fmt.Errorf("failed to create file: %w", err))
+		panic(fmt.Errorf("error getting home directory: %v", err))
+	}
+
+	exportsDir := filepath.Join(homeDir, "exports")
+	err = os.MkdirAll(exportsDir, os.ModePerm)
+	if err != nil {
+		panic(fmt.Errorf("error creating exports directory: %v", err))
+	}
+
+	return exportsDir
+}
+
+func filePrefix() string {
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	completePath := filepath.Join(ensureExportsDir(), timestamp)
+	return completePath
+}
+
+func toJSON() {
+	file := filePrefix() + ".json"
+
+	fmt.Println("Exporting to:", file)
+
+	cycles, err := database.CycleList()
+	if err != nil {
+		panic(fmt.Errorf("error getting cycles: %v", err))
+	}
+
+	jsonData, err := json.MarshalIndent(cycles, "", "  ")
+	if err != nil {
+		panic(fmt.Errorf("error marshalling cycles to JSON: %v", err))
+	}
+
+	err = os.WriteFile(file, jsonData, 0644)
+	if err != nil {
+		panic(fmt.Errorf("error writing file: %v", err))
+	}
+
+	color.Green(file)
+}
+
+func toCSV() {
+	fileName := filePrefix() + ".csv"
+
+	file, err := os.Create(fileName)
+	if err != nil {
+		panic(fmt.Errorf("error creating file: %v", err))
 	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			panic(fmt.Errorf("failed to close file: %w", err))
+			panic(fmt.Errorf("error closing file: %v", err))
 		}
 	}(file)
 
@@ -103,36 +124,11 @@ func ToCSV(displayLogs bool) {
 			panic(fmt.Errorf("failed to write row: %w", err))
 		}
 	}
-	if displayLogs {
-		color.Green("Successfully Export data to CSV file: " + fileName)
-	}
+
+	color.Green(fileName)
 }
 
-func ToJSON(displayLogs bool) {
-	fileName := fileNamePrefix() + ".json"
-	fileName = RootDir() + "/" + filepath.Clean(fileName)
-
-	cycles, err := database.CycleList()
-	if err != nil {
-		panic(fmt.Errorf("failed to get database: %w", err))
-	}
-
-	jsonData, err := json.MarshalIndent(cycles, "", "  ")
-	if err != nil {
-		panic(fmt.Errorf("failed to marshal json: %w", err))
-	}
-
-	err = os.WriteFile(fileName, jsonData, 0644)
-	if err != nil {
-		panic(fmt.Errorf("failed to write JSON file '%s': %w", fileName, err))
-	}
-
-	if displayLogs {
-		color.Green("Successfully Export data to JSON file: " + fileName)
-	}
-}
-
-func Export(displayLogs bool) {
-	ToCSV(displayLogs)
-	ToJSON(displayLogs)
+func Export() {
+	toCSV()
+	toJSON()
 }
