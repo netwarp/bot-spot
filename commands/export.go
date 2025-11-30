@@ -36,8 +36,6 @@ func filePrefix() string {
 func toJSON() {
 	file := filePrefix() + ".json"
 
-	fmt.Println("Exporting to:", file)
-
 	cycles, err := database.CycleList()
 	if err != nil {
 		panic(fmt.Errorf("error getting cycles: %v", err))
