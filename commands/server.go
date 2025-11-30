@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
@@ -12,6 +13,11 @@ import (
 )
 
 var perPage int = 200
+
+// Embed only the HTML template (relative path from this file: commands/)
+//
+//go:embed misc/template.html
+var templateFS embed.FS
 
 func getPage(r *http.Request) int {
 	query := r.URL.Query()
@@ -105,7 +111,7 @@ func displayStats(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	tmpl, err := template.ParseFiles("commands/misc/template.html")
+	tmpl, err := template.ParseFS(templateFS, "misc/template.html")
 	if err != nil {
 		http.Error(w, "Error parsing template", http.StatusInternalServerError)
 		return
